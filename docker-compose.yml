@@ -12,6 +12,43 @@ services:
     networks:
       - mqtt_network
 
+  mongo:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo_data:/data/db
+    networks:
+      - backend_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: golang_app
+    environment:
+      - MQTT_BROKER_ADDRESS=${MQTT_BROKER_ADDRESS}
+      - JWT_KEY=${JWT_KEY}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+    networks:
+      - backend_network
+  
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nextjs_app
+    ports:
+      - "3000:3000"
+    networks:
+      - backend_network
+
 networks:
+  backend_network:
+    driver: bridge 
   mqtt_network:
     driver: bridge
