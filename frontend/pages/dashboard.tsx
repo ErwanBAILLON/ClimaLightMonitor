@@ -22,68 +22,66 @@ export default function Dashboard() {
   });
 
   const [showToast, setShowToast] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const fetchData = () => {
+    axios.get('http://localhost:8080/data')
+      .then((response) => {
+        const latestData = response.data[response.data.length - 1];
+        const chartData = response.data.map((data: { temperature: number; humidity: number; luminosity: number; timestamp: string; }) => ({
+          temperature: data.temperature,
+          humidity: data.humidity,
+          luminosity: data.luminosity,
+          timestamp: data.timestamp,
+        }));
+
+        const averages = calculateAverages(response.data);
+
+        setData((prevData) => ({
+          ...prevData,
+          temperature: latestData.temperature,
+          humidity: latestData.humidity,
+          luminosity: latestData.luminosity,
+          chartData,
+          averages,
+        }));
+      })
+      .catch((error) => console.error('Erreur lors de la récupération des données:', error));
+  };
 
   useEffect(() => {
-    // Fonction pour récupérer les données depuis le backend
-    const fetchData = () => {
-      axios.get('http://localhost:8080/data')
-        .then((response) => {
-          const latestData = response.data[response.data.length - 1];
-          const chartData = response.data.map((data: { temperature: number; humidity: number; luminosity: number; timestamp: string }) => ({
-            temperature: data.temperature,
-            humidity: data.humidity,
-            luminosity: data.luminosity,
-            timestamp: data.timestamp,
-          }));
-
-          const averages = calculateAverages(response.data);
-
-          setData((prevData) => ({
-            ...prevData,
-            temperature: latestData.temperature,
-            humidity: latestData.humidity,
-            luminosity: latestData.luminosity,
-            chartData,
-            averages,
-          }));
-        })
-        .catch((error) => console.error('Erreur lors de la récupération des données:', error));
-    };
-
-    // Fetch initial des données
     fetchData();
 
-    // Rafraîchissement automatique toutes les 2 minutes si en ligne
     const intervalId = setInterval(() => {
       if (navigator.onLine) {
         fetchData();
-        setShowToast(false); // Cache le toast quand on est en ligne
+        setShowToast(false);
       } else {
-        setShowToast(true); // Affiche le toast quand on est hors ligne
+        setShowToast(true);
       }
-    }, 120000); // 2 minutes
+    }, 120000);
 
-    // Gestion des événements online/offline
     const handleOnline = () => {
-      setShowToast(false); // Cache le toast quand on est de nouveau en ligne
+      setIsOnline(true);
+      setShowToast(false);
     };
 
     const handleOffline = () => {
-      setShowToast(true); // Affiche le toast quand on est hors ligne
+      setIsOnline(false);
+      setShowToast(true);
     };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Nettoyage des écouteurs d'événements et de l'intervalle
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const calculateAverages = (data: any[]) => {
+
+  const calculateAverages = (data: { temperature: number; humidity: number; luminosity: number; }[]) => {
     const total = data.length;
     const sum = data.reduce(
       (acc, curr) => ({
@@ -124,11 +122,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col bg-gray-100">
+      <div className="flex-1 flex flex-col bg-gray-100 overflow-y-auto">
         <Header title="Dashboard" />
-        
+
         {/* Toast pour afficher le statut hors ligne */}
         {showToast && (
           <div className="fixed bottom-4 right-4 bg-red-500 text-white p-2 rounded-md shadow-lg">
@@ -136,13 +134,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card title="Température Actuelle" value={`${data.temperature}°C`} />
           <Card title="Humidité Actuelle" value={`${data.humidity}%`} />
           <Card title="Luminosité Actuelle" value={`${data.luminosity} lux`} />
         </div>
 
-        <div className="flex justify-center space-x-4 p-4">
+        <div className="flex justify-center space-x-4 p-4 flex-wrap">
           <button
             className={`py-2 px-4 rounded ${data.selectedGraph === 'temperature' ? 'bg-blue-500' : 'bg-gray-400'} text-white`}
             onClick={() => toggleGraph('temperature')}
@@ -152,42 +150,52 @@ export default function Dashboard() {
           <button
             className={`py-2 px-4 rounded ${data.selectedGraph === 'humidity' ? 'bg-green-500' : 'bg-gray-400'} text-white`}
             onClick={() => toggleGraph('humidity')}
-          >
-            Humidité
-          </button>
-          <button
-            className={`py-2 px-4 rounded ${data.selectedGraph === 'luminosity' ? 'bg-yellow-500' : 'bg-gray-400'} text-white`}
-            onClick={() => toggleGraph('luminosity')}
-          >
-            Luminosité
-          </button>
-          <button
-            className={`py-2 px-4 rounded ${data.showDonut ? 'bg-purple-500' : 'bg-gray-400'} text-white`}
-            onClick={toggleDonut}
-          >
-            Moyennes (Graphique Donut)
-          </button>
-          <button
-            className={`py-2 px-4 rounded ${data.showAverages ? 'bg-purple-500' : 'bg-gray-400'} text-white`}
-            onClick={toggleAverages}
-          >
-            Afficher Moyennes
-          </button>
-        </div>
-
-        <div className="p-4">
-          {data.showDonut ? (
-            <DonutChart averages={data.averages} selectedGraph={data.selectedGraph} />
-          ) : (
-            <SensorChart
-              chartData={data.chartData}
-              selectedGraph={data.selectedGraph}
-              averages={data.averages}
-              showAverages={data.showAverages}
-            />
-          )}
+            >
+              Humidité
+            </button>
+            <button
+              className={`py-2 px-4 rounded ${data.selectedGraph === 'luminosity' ? 'bg-yellow-500' : 'bg-gray-400'} text-white`}
+              onClick={() => toggleGraph('luminosity')}
+            >
+              Luminosité
+            </button>
+            <button
+              className={`py-2 px-4 rounded ${data.showDonut ? 'bg-purple-500' : 'bg-gray-400'} text-white`}
+              onClick={toggleDonut}
+            >
+              Moyennes (Graphique Donut)
+            </button>
+            <button
+              className={`py-2 px-4 rounded ${data.showAverages ? 'bg-purple-500' : 'bg-gray-400'} text-white`}
+              onClick={toggleAverages}
+            >
+              Afficher Moyennes
+            </button>
+  
+            {/* Bouton de reload */}
+            <button
+              className={`py-2 px-4 rounded ${isOnline ? 'bg-green-500' : 'bg-gray-400 cursor-not-allowed'} text-white`}
+              onClick={isOnline ? fetchData : undefined} // Désactiver si hors ligne
+              disabled={!isOnline} // Griser le bouton si hors ligne
+            >
+              Recharger le Graphique
+            </button>
+          </div>
+  
+          <div className="p-4">
+            {data.showDonut ? (
+              <DonutChart averages={data.averages} selectedGraph={data.selectedGraph} />
+            ) : (
+              <SensorChart
+                chartData={data.chartData}
+                selectedGraph={data.selectedGraph}
+                averages={data.averages}
+                showAverages={data.showAverages}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+  
