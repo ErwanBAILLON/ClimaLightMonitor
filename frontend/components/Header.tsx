@@ -1,13 +1,15 @@
+import React from 'react';
+
 interface HeaderProps {
   title: string;
 }
 
-export default function Header({ title }: HeaderProps) {
+const Header: React.FC<HeaderProps> = ({ title }) => {
   return (
-    <header className="bg-white shadow-md py-4 px-6 flex items-center justify-center md:justify-between">
-      <div className="flex items-center">
-        <h1 className="text-lg md:text-xl font-bold text-gray-800">{title}</h1>
-      </div>
+    <header className="bg-white shadow-md py-4 px-6 flex items-center justify-between">
+      <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
     </header>
   );
-}
+};
+
+export default Header;
