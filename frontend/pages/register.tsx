@@ -24,7 +24,7 @@ const Register = () => {
     
     try {
       // Envoyer la requête au backend
-      const response = await axios.post('http://localhost:8080/register', {
+      const response = await axios.post(`http://${process.env.NEXT_PUBLIC_API_URL}/register`, {
         username,
         password
       });

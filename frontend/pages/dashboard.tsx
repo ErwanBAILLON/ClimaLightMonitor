@@ -73,7 +73,7 @@ function Dashboard() {
 
   const fetchData = () => {
     axios
-      .get('http://process.env.NEXT_PUBLIC_API_URL/data')
+      .get(`http://${process.env.NEXT_PUBLIC_API_URL}/data`)
       .then((response) => {
         const responseData = response.data;
         const latestData = responseData[responseData.length - 1];
