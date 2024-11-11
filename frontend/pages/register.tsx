@@ -1,5 +1,5 @@
 import "tailwindcss/tailwind.css";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 
@@ -9,6 +9,15 @@ const Register = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    
+    // Si un token est déjà présent, redirige vers le dashboard
+    if (token) {
+      router.push('/dashboard');
+    }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

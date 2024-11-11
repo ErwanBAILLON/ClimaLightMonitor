@@ -1,5 +1,5 @@
 import "tailwindcss/tailwind.css";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
 
@@ -8,6 +8,15 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    
+    // Si un token est déjà présent, redirige vers le dashboard
+    if (token) {
+      router.push('/dashboard');
+    }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +30,7 @@ const Login = () => {
 
       // Si l'authentification est réussie, rediriger vers le dashboard
       if (response.status === 200) {
+        localStorage.setItem('token', response.data.token); // Stockage du token
         router.push('/dashboard'); // Redirection vers le dashboard
       }
     } catch (err) {

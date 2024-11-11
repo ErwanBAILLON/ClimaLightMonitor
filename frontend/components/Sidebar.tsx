@@ -1,12 +1,19 @@
 import { FaHome, FaChartLine, FaPowerOff } from 'react-icons/fa';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 
 const Sidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const router = useRouter();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    router.push('/login');
   };
 
   return (
@@ -41,7 +48,7 @@ const Sidebar = () => {
 
         {/* Bouton Déconnexion collé en bas */}
         <div className="p-4">
-          <button className="w-full flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded-md transition duration-300 ease-in-out">
+          <button className="w-full flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded-md transition duration-300 ease-in-out" onClick={handleLogout}>
             <FaPowerOff className="mr-3" /> Déconnexion
           </button>
         </div>
