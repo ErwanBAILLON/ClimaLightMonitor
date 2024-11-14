@@ -1,15 +1,20 @@
-// next.config.mjs
+// import 'dotenv/config';
+(async () => {
+  const dotenv = await import('dotenv');
+  dotenv.config();
+})();
 import withPWA from 'next-pwa';
 
 const nextConfig = {
   reactStrictMode: true,
-  // Ajoute d'autres configurations spécifiques à Next.js ici
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
 };
 
 const pwaConfig = {
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
-  // Autres options spécifiques à next-pwa, comme `exclude`, peuvent être ajoutées ici
 };
 
 export default withPWA(pwaConfig)(nextConfig);
