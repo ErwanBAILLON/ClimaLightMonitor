@@ -21,6 +21,7 @@ services:
       - ./mongo_data:/data/db
     networks:
       - backend_network
+    restart: always
 
   backend:
     build:
@@ -36,18 +37,20 @@ services:
       - mongo
     networks:
       - backend_network
+    restart: always
   
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     container_name: nextjs_app
     ports:
       - "${FRONTEND_PORT}:3000"
     networks:
       - backend_network
-    environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    restart: always
 
 networks:
   backend_network:
