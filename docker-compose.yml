@@ -9,8 +9,6 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
-    networks:
-      - mqtt_network
 
   mongo:
     image: mongo:latest
@@ -55,5 +53,3 @@ services:
 networks:
   backend_network:
     driver: bridge 
-  mqtt_network:
-    driver: bridge
