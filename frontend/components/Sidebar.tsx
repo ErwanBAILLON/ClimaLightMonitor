@@ -1,9 +1,10 @@
-import { FaHome, FaChartLine, FaPowerOff } from 'react-icons/fa';
+import { FaHome, FaChartLine, FaPowerOff, FaFileCsv } from 'react-icons/fa';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 
-const Sidebar = () => {
+// eslint-disable-next-line
+const Sidebar = ({ data }: any) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const router = useRouter();
 
@@ -14,6 +15,34 @@ const Sidebar = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     router.push('/login');
+  };
+
+  const handleDashboardClick = () => {
+    router.push('/dashboard');
+  };
+
+  const exportToCSV = () => {
+    const csvData = [
+      ['Timestamp', 'Temperature', 'Humidity', 'Luminosity'],
+      // eslint-disable-next-line
+      ...data.chartData.map((item: any) => [
+        item.timestamp,
+        item.temperature,
+        item.humidity,
+        item.luminosity,
+      ]),
+    ];
+
+    const csvContent = `data:text/csv;charset=utf-8,${csvData
+      .map((e) => e.join(','))
+      .join('\n')}`;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'dashboard_data.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -38,17 +67,28 @@ const Sidebar = () => {
                 <FaHome className="mr-3" /> Accueil
               </a>
             </Link>
-            <Link href="/dashboard">
-              <a className="flex items-center px-4 py-2 hover:bg-blue-700">
-                <FaChartLine className="mr-3" /> Dashboard
-              </a>
-            </Link>
+            <button
+              onClick={handleDashboardClick}
+              className="flex items-center w-full text-left px-4 py-2 hover:bg-blue-700"
+            >
+              <FaChartLine className="mr-3" /> Dashboard
+            </button>
+
+            <button
+              onClick={exportToCSV}
+              className="flex items-center w-full text-left px-4 py-2 hover:bg-blue-700"
+            >
+              <FaFileCsv className="mr-3" /> Exporter en CSV
+            </button>
           </nav>
         </div>
 
         {/* Bouton Déconnexion collé en bas */}
         <div className="p-4">
-          <button className="w-full flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded-md transition duration-300 ease-in-out" onClick={handleLogout}>
+          <button
+            className="w-full flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded-md transition duration-300 ease-in-out"
+            onClick={handleLogout}
+          >
             <FaPowerOff className="mr-3" /> Déconnexion
           </button>
         </div>

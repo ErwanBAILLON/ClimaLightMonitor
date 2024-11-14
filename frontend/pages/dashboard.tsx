@@ -8,23 +8,9 @@ import 'tailwindcss/tailwind.css';
 import withAuth from '@/components/withAuth';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import {
-  subDays,
-  parseISO,
-  isAfter,
-  isBefore,
-  isEqual,
-} from 'date-fns';
+import { subDays, parseISO, isAfter, isEqual, isBefore } from 'date-fns';
 import { FiRefreshCw } from 'react-icons/fi';
-import {
-  FaTemperatureHigh,
-  FaTint,
-  FaLightbulb,
-  FaExclamationTriangle,
-  FaArrowUp,
-  FaArrowDown,
-  FaEquals,
-} from 'react-icons/fa';
+import { FaTemperatureHigh, FaTint, FaLightbulb, FaExclamationTriangle, FaArrowUp, FaArrowDown, FaEquals } from 'react-icons/fa';
 
 type DataKeys = 'temperature' | 'humidity' | 'luminosity';
 
@@ -33,12 +19,7 @@ function Dashboard() {
     temperature: 0,
     humidity: 0,
     luminosity: 0,
-    chartData: [] as Array<{
-      temperature: number;
-      humidity: number;
-      luminosity: number;
-      timestamp: string;
-    }>,
+    chartData: Array<{ temperature: number; humidity: number; luminosity: number; timestamp: string }>(),
     averages: {
       temperature: 0,
       humidity: 0,
@@ -63,66 +44,54 @@ function Dashboard() {
   });
 
   const [showToast, setShowToast] = useState(false);
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
-  const [startDate, setStartDate] = useState<Date | undefined>(
-    subDays(new Date(), 1)
-  );
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [startDate, setStartDate] = useState<Date | undefined>(subDays(new Date(), 1));
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+
+  // Fonction qui met à jour les données des 24 dernières heures
+  const updateData = (latestData: { temperature: number; humidity: number; luminosity: number }, chartData: { temperature: number; humidity: number; luminosity: number; timestamp: string }[]) => {
+    // Filtrer les données pour les dernières 24 heures
+    const filteredData = chartData.filter((entry) => {
+      const entryDate = parseISO(entry.timestamp);
+      const isAfterStartDate = isAfter(entryDate, subDays(new Date(), 1)) || isEqual(entryDate, subDays(new Date(), 1));
+      return isAfterStartDate;
+    });
+
+    // Calculer les moyennes et les tendances
+    const averages = calculateAverages(filteredData);
+    const trends = calculateTrends(chartData);
+
+    // Mettre à jour l'état avec les nouvelles données
+    setData((prevData) => ({
+      ...prevData,
+      temperature: latestData.temperature,
+      humidity: latestData.humidity,
+      luminosity: latestData.luminosity,
+      chartData,
+      averages,
+      trends,
+    }));
+  };
 
   const fetchData = () => {
     axios
-      .get(`http://${process.env.NEXT_PUBLIC_API_URL}/data`)
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/data`)
       .then((response) => {
         const responseData = response.data;
         const latestData = responseData[responseData.length - 1];
-        const chartData = responseData.map(
-          (data: {
-            temperature: number;
-            humidity: number;
-            luminosity: number;
-            timestamp: string;
-          }) => ({
-            temperature: data.temperature,
-            humidity: data.humidity,
-            luminosity: data.luminosity,
-            timestamp: data.timestamp,
-          })
-        );
-        // eslint-disable-next-line
-        const filteredData = chartData.filter((entry: any) => {
-          const entryDate = parseISO(entry.timestamp);
-          const isAfterStartDate = startDate
-            ? isAfter(entryDate, startDate) || isEqual(entryDate, startDate)
-            : true;
-          const isBeforeEndDate = endDate
-            ? isBefore(entryDate, endDate) || isEqual(entryDate, endDate)
-            : true;
-          return isAfterStartDate && isBeforeEndDate;
-        });
-
-        const averages = calculateAverages(filteredData);
-        const trends = calculateTrends(chartData);
-
-        setData((prevData) => ({
-          ...prevData,
-          temperature: latestData.temperature,
-          humidity: latestData.humidity,
-          luminosity: latestData.luminosity,
-          chartData,
-          averages,
-          trends,
+        const chartData = responseData.map((data: { temperature: number; humidity: number; luminosity: number; timestamp: string }) => ({
+          temperature: data.temperature,
+          humidity: data.humidity,
+          luminosity: data.luminosity,
+          timestamp: data.timestamp,
         }));
+        updateData(latestData, chartData);
       })
-      .catch((error) =>
-        console.error('Erreur lors de la récupération des données:', error)
-      );
+      .catch((error) => console.error('Erreur lors de la récupération des données:', error));
   };
 
   useEffect(() => {
     fetchData();
-
     const intervalId = setInterval(() => {
       if (navigator.onLine) {
         fetchData();
@@ -152,37 +121,15 @@ function Dashboard() {
     };
   }, [startDate, endDate]);
 
-  const calculateAverages = (
-    dataArray: Array<{
-      temperature: number;
-      humidity: number;
-      luminosity: number;
-    }>
-  ) => {
+  const calculateAverages = (dataArray: { temperature: number; humidity: number; luminosity: number }[]) => {
     const total = dataArray.length;
-    if (total === 0) {
-      return {
-        temperature: 0,
-        humidity: 0,
-        luminosity: 0,
-        maxTemperature: 0,
-        minTemperature: 0,
-        maxHumidity: 0,
-        minHumidity: 0,
-        maxLuminosity: 0,
-        minLuminosity: 0,
-        heatIndex: 0,
-        dewPoint: 0,
-      };
-    }
-    const sum = dataArray.reduce(
-      (acc, curr) => ({
-        temperature: acc.temperature + curr.temperature,
-        humidity: acc.humidity + curr.humidity,
-        luminosity: acc.luminosity + curr.luminosity,
-      }),
-      { temperature: 0, humidity: 0, luminosity: 0 }
-    );
+    if (total === 0) return { temperature: 0, humidity: 0, luminosity: 0, maxTemperature: 0, minTemperature: 0, maxHumidity: 0, minHumidity: 0, maxLuminosity: 0, minLuminosity: 0, heatIndex: 0, dewPoint: 0 };
+
+    const sum = dataArray.reduce((acc, curr) => ({
+      temperature: acc.temperature + curr.temperature,
+      humidity: acc.humidity + curr.humidity,
+      luminosity: acc.luminosity + curr.luminosity,
+    }), { temperature: 0, humidity: 0, luminosity: 0 });
 
     const avgTemperature = sum.temperature / total;
     const avgHumidity = sum.humidity / total;
@@ -199,55 +146,20 @@ function Dashboard() {
     const maxLuminosity = Math.max(...luminosities);
     const minLuminosity = Math.min(...luminosities);
 
-    // Calcul de l'Indice de Confort Thermique
-    const heatIndex =
-      avgTemperature -
-      (0.55 - 0.0055 * avgHumidity) * (avgTemperature - 14.5);
-
-    // Calcul du Point de Rosée
-    const gamma =
-      Math.log(avgHumidity / 100) +
-      (17.62 * avgTemperature) / (243.12 + avgTemperature);
+    const heatIndex = avgTemperature - (0.55 - 0.0055 * avgHumidity) * (avgTemperature - 14.5);
+    const gamma = Math.log(avgHumidity / 100) + (17.62 * avgTemperature) / (243.12 + avgTemperature);
     const dewPoint = (243.12 * gamma) / (17.62 - gamma);
 
-    return {
-      temperature: avgTemperature,
-      humidity: avgHumidity,
-      luminosity: avgLuminosity,
-      maxTemperature,
-      minTemperature,
-      maxHumidity,
-      minHumidity,
-      maxLuminosity,
-      minLuminosity,
-      heatIndex,
-      dewPoint,
-    };
+    return { temperature: avgTemperature, humidity: avgHumidity, luminosity: avgLuminosity, maxTemperature, minTemperature, maxHumidity, minHumidity, maxLuminosity, minLuminosity, heatIndex, dewPoint };
   };
 
-  const calculateTrends = (
-    dataArray: Array<{
-      temperature: number;
-      humidity: number;
-      luminosity: number;
-    }>
-  ) => {
-    if (dataArray.length < 2) {
-      return {
-        temperature: 'stable',
-        humidity: 'stable',
-        luminosity: 'stable',
-      };
-    }
+  const calculateTrends = (dataArray: { temperature: number; humidity: number; luminosity: number }[]) => {
+    if (dataArray.length < 2) return { temperature: 'stable', humidity: 'stable', luminosity: 'stable' };
 
     const latest = dataArray[dataArray.length - 1];
     const previous = dataArray[dataArray.length - 2];
-
-    const getTrend = (current: number, previous: number) => {
-      if (current > previous) return 'up';
-      if (current < previous) return 'down';
-      return 'stable';
-    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getTrend = (current: any, previous: any) => current > previous ? 'up' : current < previous ? 'down' : 'stable';
 
     return {
       temperature: getTrend(latest.temperature, previous.temperature),
@@ -298,13 +210,13 @@ function Dashboard() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar />
+      <Sidebar data={data} />
       <div className="flex-1 flex flex-col overflow-y-auto">
         <Header title="Dashboard" />
 
         {/* Toast pour afficher le statut hors ligne */}
         {showToast && (
-          <div className="fixed bottom-4 right-4 bg-red-100 text-white p-4 rounded-md shadow-lg flex items-center space-x-2">
+          <div className="fixed bottom-4 right-4 bg-bleu-400 text-white p-4 rounded-md shadow-lg flex items-center space-x-2">
             <span className="animate-pulse">🔴</span>
             <span>Vous êtes hors ligne</span>
           </div>
@@ -313,7 +225,7 @@ function Dashboard() {
         {/* Contenu principal */}
         <main className="p-6 space-y-6">
           {/* Section Conditions Actuelles */}
-          <section>
+          <section id="current-conditions">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Conditions Actuelles
             </h2>
@@ -432,7 +344,7 @@ function Dashboard() {
           </section>
 
           {/* Section Statistiques sur les dernières 24 heures */}
-          <section>
+          <section id="last-24h-stats">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Statistiques sur les dernières 24 heures
             </h2>
@@ -484,7 +396,7 @@ function Dashboard() {
           </section>
 
           {/* Section Graphiques */}
-          <section>
+          <section id="charts">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Visualisation des Données
             </h2>
