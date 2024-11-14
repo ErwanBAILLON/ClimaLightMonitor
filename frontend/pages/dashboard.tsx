@@ -32,6 +32,8 @@ function Dashboard() {
       minLuminosity: 0,
       heatIndex: 0,
       dewPoint: 0,
+      moldRisk: "Élevé",
+      lightCondition: "Modérée"
     },
     trends: {
       temperature: 'stable',
@@ -62,7 +64,8 @@ function Dashboard() {
     const trends = calculateTrends(chartData);
 
     // Mettre à jour l'état avec les nouvelles données
-    setData((prevData) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setData((prevData: any) => ({
       ...prevData,
       temperature: latestData.temperature,
       humidity: latestData.humidity,
@@ -150,7 +153,19 @@ function Dashboard() {
     const gamma = Math.log(avgHumidity / 100) + (17.62 * avgTemperature) / (243.12 + avgTemperature);
     const dewPoint = (243.12 * gamma) / (17.62 - gamma);
 
-    return { temperature: avgTemperature, humidity: avgHumidity, luminosity: avgLuminosity, maxTemperature, minTemperature, maxHumidity, minHumidity, maxLuminosity, minLuminosity, heatIndex, dewPoint };
+    const avgTemperatureOnLast1h = dataArray.slice(-120).reduce((acc, curr) => acc + curr.temperature, 0) / 120;
+    const temperature = avgTemperatureOnLast1h;
+    const avgHumidityOnLast1h = dataArray.slice(-120).reduce((acc, curr) => acc + curr.humidity, 0) / 120;
+    const humidity = avgHumidityOnLast1h;
+    const moldRisk = humidity > 70 && temperature > 20 ? "Élevé" : "Faible";
+    const avgLuminosityOnLast1h = dataArray.slice(-120).reduce((acc, curr) => acc + curr.luminosity, 0) / 120;
+    const luminosity = avgLuminosityOnLast1h;
+    let lightCondition;
+    if (luminosity < 200) lightCondition = "Faible";
+    else if (luminosity <= 1000) lightCondition = "Modérée";
+    else lightCondition = "Élevée";
+
+    return { temperature: avgTemperature, humidity: avgHumidity, luminosity: avgLuminosity, maxTemperature, minTemperature, maxHumidity, minHumidity, maxLuminosity, minLuminosity, heatIndex, dewPoint, moldRisk, lightCondition };
   };
 
   const calculateTrends = (dataArray: { temperature: number; humidity: number; luminosity: number }[]) => {
@@ -392,6 +407,54 @@ function Dashboard() {
               </div>
 
               {/* Autres cartes si nécessaire */}
+            </div>
+          </section>
+
+          {/* Section Indices de Confort */}
+          <section id="comfort-indices">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Indices de Confort
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Carte Indice de Chaleur */}
+              <div className="bg-white shadow-lg rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Indice de Chaleur
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  {data.averages.heatIndex.toFixed(2)}°C
+                </p>
+              </div>
+
+              {/* Carte Point de Rosée */}
+              <div className="bg-white shadow-lg rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Point de Rosée
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  {data.averages.dewPoint.toFixed(2)}°C
+                </p>
+              </div>
+
+              {/* Carte Risque de Moisissures */}
+              <div className="bg-white shadow-lg rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Risque de Moisissures
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  {data.averages.moldRisk}
+                </p>
+              </div>
+
+              {/* Carte Condition Lumineuse */}
+              <div className="bg-white shadow-lg rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Condition Lumineuse
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  {data.averages.lightCondition}
+                </p>
+              </div>
             </div>
           </section>
 
