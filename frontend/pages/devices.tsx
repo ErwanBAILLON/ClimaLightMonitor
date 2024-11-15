@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useRouter } from "next/router";
+// import { useRouter } from "next/router";
 
 interface Device {
   deviceId: string;
@@ -9,8 +9,8 @@ interface Device {
 
 const Devices = () => {
   const [devices, setDevices] = useState<Device[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  // const [error, setError] = useState<string | null>(null);
+  // const router = useRouter();
 
   useEffect(() => {
     const fetchDevices = async () => {
