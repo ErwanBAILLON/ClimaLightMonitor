@@ -52,11 +52,13 @@ func Register(client *mongo.Client) http.HandlerFunc {
             return
         }
 
-        // Répondre avec le token
+        // Répondre avec le statut HTTP 201 Created
         w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusCreated) // Spécifie le statut 201
         json.NewEncoder(w).Encode(map[string]string{"token": token, "userId": insertedID})
     }
 }
+
 
 func Login(client *mongo.Client) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
