@@ -71,3 +71,31 @@ func RegisterDevice(client *mongo.Client) http.HandlerFunc {
 		fmt.Fprintf(w, "Device registered successfully")
 	}
 }
+
+func ListDevices(client *mongo.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+	  userId := r.URL.Query().Get("userId")
+	  if userId == "" {
+		http.Error(w, "userId is required", http.StatusBadRequest)
+		return
+	  }
+  
+	  collection := client.Database("iotdb").Collection("devices")
+	  cursor, err := collection.Find(context.TODO(), bson.M{"userId": userId})
+	  if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	  }
+	  defer cursor.Close(context.TODO())
+  
+	  var devices []bson.M
+	  if err := cursor.All(context.TODO(), &devices); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	  }
+  
+	  w.Header().Set("Content-Type", "application/json")
+	  json.NewEncoder(w).Encode(devices)
+	}
+  }
+  
