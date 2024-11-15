@@ -55,6 +55,7 @@ func main() {
     r.HandleFunc("/api/register", handlers.Register(client)).Methods("POST")
     r.HandleFunc("/api/login", handlers.Login(client)).Methods("POST")
     r.HandleFunc("/api/data", handlers.GetData(client)).Methods("GET")
+    r.HandleFunc("/api/devices/register", handlers.RegisterDevice(client)).Methods("POST")
 
     // Configuration des en-têtes CORS
     headersOk := gorillaHandlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
