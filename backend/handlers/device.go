@@ -1,12 +1,10 @@
 package handlers
 
 import (
-	"backend/models"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -22,57 +20,58 @@ type RegisterDeviceRequest struct {
 }
 
 func RegisterDevice(client *mongo.Client) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Décoder le JSON reçu
-		var req RegisterDeviceRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
+    return func(w http.ResponseWriter, r *http.Request) {
+        var req struct {
+            DeviceID string `json:"deviceId"`
+            UserID   string `json:"userId"`
+        }
 
-		// Vérifier les champs obligatoires
-		if req.UserID == "" || req.DeviceID == "" || req.DeviceName == "" {
-			http.Error(w, "Missing required fields", http.StatusBadRequest)
-			return
-		}
+		fmt.Println("RegisterDevice")
 
-		// Convertir l'ID utilisateur en ObjectID
-		userID, err := primitive.ObjectIDFromHex(req.UserID)
-		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
-			return
-		}
+        // Décoder la requête JSON
+        if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+            http.Error(w, "Invalid request payload", http.StatusBadRequest)
+            return
+        }
 
-		// Vérifier si l'appareil est déjà enregistré
-		collection := client.Database("iotdb").Collection("devices")
-		var existingDevice models.Device
-		err = collection.FindOne(context.TODO(), bson.M{"deviceId": req.DeviceID}).Decode(&existingDevice)
-		if err == nil {
-			http.Error(w, "Device already registered", http.StatusConflict)
-			return
-		}
+        // Vérifier que le `deviceId` et le `userId` sont fournis
+        if req.DeviceID == "" || req.UserID == "" {
+            http.Error(w, "Missing deviceId or userId", http.StatusBadRequest)
+            return
+        }
 
-		// Créer un nouvel appareil
-		newDevice := models.Device{
-			UserID:     userID,
-			DeviceID:   req.DeviceID,
-			DeviceName: req.DeviceName,
-			Registered: true,
-			CreatedAt:  time.Now().Unix(),
-		}
+        // Vérifier que le `userId` est un ObjectID valide
+        userId, err := primitive.ObjectIDFromHex(req.UserID)
+        if err != nil {
+            http.Error(w, "Invalid userId format", http.StatusBadRequest)
+            return
+        }
 
-		// Insérer l'appareil dans la base de données
-		_, err = collection.InsertOne(context.TODO(), newDevice)
-		if err != nil {
-			http.Error(w, "Failed to register device", http.StatusInternalServerError)
-			return
-		}
+        // Rechercher et mettre à jour l'appareil dans MongoDB
+        collection := client.Database("iot_db").Collection("devices")
+        filter := bson.M{"deviceId": req.DeviceID}
+        update := bson.M{"$set": bson.M{"userId": userId, "registered": true}}
 
-		// Répondre au client
-		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, "Device registered successfully")
-	}
+        result, err := collection.UpdateOne(context.TODO(), filter, update)
+        if err != nil {
+            log.Printf("Failed to update device: %v", err)
+            http.Error(w, "Failed to register device", http.StatusInternalServerError)
+            return
+        }
+
+        // Vérifier si un document a été modifié
+        if result.MatchedCount == 0 {
+            http.Error(w, "Device not found", http.StatusNotFound)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("Device registered successfully"))
+    }
 }
+
+
+
 
 func ListDevices(client *mongo.Client) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {

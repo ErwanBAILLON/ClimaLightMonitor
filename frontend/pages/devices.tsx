@@ -20,6 +20,7 @@ const Devices = () => {
         
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/devices?userId=${userId}`);
         console.log("Données reçues :", response.data);
+        if (!Array.isArray(response.data)) throw new Error("Données invalides !");
         setDevices(response.data);
       } catch (error) {
         console.error("Erreur lors de la récupération des appareils :", error);
@@ -36,7 +37,7 @@ const Devices = () => {
 
   return (
     <div>
-      {devices.length > 0 ? (
+      {devices.length !== 0 ? (
         devices.map((device) => (
           <div key={device.deviceId}>
             <p>{device.deviceName}</p>
