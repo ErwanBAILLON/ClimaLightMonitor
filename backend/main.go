@@ -1,14 +1,16 @@
 package main
 
 import (
-	"backend/handlers" // tes propres handlers
+	"backend/handlers"
 	"backend/mqtt"
 	"context"
 	"fmt"
 	"log"
 	"net/http"
+    "net/url"
+    "os"
 
-	gorillaHandlers "github.com/gorilla/handlers" // Assure-toi que cet import est présent
+	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -16,9 +18,24 @@ import (
 
 var client *mongo.Client
 
+func encodePassword(password string) string {
+	return url.QueryEscape(password)
+}
+
 func main() {
     // Connexion à MongoDB
-    clientOptions := options.Client().ApplyURI("mongodb://mongo:27017")
+    mongoHost := os.Getenv("MONGO_HOST")
+    mongoPort := os.Getenv("MONGO_PORT")
+    mongoUser := os.Getenv("MONGO_USER")
+    mongoPassword := os.Getenv("MONGO_PASSWORD")
+    mongoAuthSource := os.Getenv("MONGO_AUTH_SOURCE")
+
+    clientOptions := options.Client().SetAuth(options.Credential{
+		Username:      mongoUser,
+		Password:      mongoPassword,
+		AuthSource:    mongoAuthSource,
+		AuthMechanism: "SCRAM-SHA-256",
+	}).SetHosts([]string{fmt.Sprintf("%s:%s", mongoHost, mongoPort)})
     var err error
     client, err = mongo.Connect(context.TODO(), clientOptions)
     if err != nil {
@@ -41,7 +58,7 @@ func main() {
 
     // Configuration des en-têtes CORS
     headersOk := gorillaHandlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
-    originsOk := gorillaHandlers.AllowedOrigins([]string{"*"}) // Ici, "*" permet toutes les origines, tu peux le restreindre si nécessaire
+    originsOk := gorillaHandlers.AllowedOrigins([]string{"*"})
     methodsOk := gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 
     // Démarrer le serveur avec le middleware CORS

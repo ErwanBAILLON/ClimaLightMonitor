@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+    "os"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -19,7 +20,7 @@ func Register(client *mongo.Client) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         var user User
         _ = json.NewDecoder(r.Body).Decode(&user)
-        collection := client.Database("iot_db").Collection("users")
+        collection := client.Database(os.Getenv("MONGO_DB")).Collection("users")
         _, err := collection.InsertOne(context.TODO(), user)
         if err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -33,7 +34,7 @@ func Login(client *mongo.Client) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         var user User
         _ = json.NewDecoder(r.Body).Decode(&user)
-        collection := client.Database("iot_db").Collection("users")
+        collection := client.Database(os.Getenv("MONGO_DB")).Collection("users")
         var result User
         err := collection.FindOne(context.TODO(), bson.M{"username": user.Username}).Decode(&result)
         if err != nil {

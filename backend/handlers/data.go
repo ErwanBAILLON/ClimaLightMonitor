@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+    "os"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -11,7 +12,7 @@ import (
 
 func GetData(client *mongo.Client) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
-        collection := client.Database("iot_db").Collection("sensor_data")
+        collection := client.Database(os.Getenv("MONGO_DB")).Collection("sensor_data")
         cursor, err := collection.Find(context.TODO(), bson.M{})
         if err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)

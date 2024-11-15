@@ -29,7 +29,7 @@ func handleMQTTMessage(client MQTT.Client, msg MQTT.Message, mongoClient *mongo.
 	sensorData["timestamp"] = time.Now()
 
 	// Insertion dans MongoDB
-	collection := mongoClient.Database("iot_db").Collection("sensor_data")
+	collection := mongoClient.Database(os.Getenv("MONGO_DB")).Collection("sensor_data")
 	_, err = collection.InsertOne(context.TODO(), sensorData)
 	if err != nil {
 		log.Printf("Failed to insert MQTT message into MongoDB: %v", err)
