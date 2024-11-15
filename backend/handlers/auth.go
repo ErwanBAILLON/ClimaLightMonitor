@@ -7,6 +7,7 @@ import (
 	"net/http"
     "os"
 
+    "go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
     "golang.org/x/crypto/bcrypt"
@@ -41,9 +42,11 @@ func Register(client *mongo.Client) http.HandlerFunc {
             return
         }
 
+        // Récupérer l'ID inséré et le convertir en chaîne
+        insertedID := result.InsertedID.(primitive.ObjectID).Hex()
+
         // Générer un token JWT avec l'ID utilisateur
-        userId := result.InsertedID.(string)
-        token, err := utils.GenerateJWT(userId)
+        token, err := utils.GenerateJWT(insertedID)
         if err != nil {
             http.Error(w, "Error generating token", http.StatusInternalServerError)
             return
@@ -51,7 +54,7 @@ func Register(client *mongo.Client) http.HandlerFunc {
 
         // Répondre avec le token
         w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(map[string]string{"token": token, "userId": userId})
+        json.NewEncoder(w).Encode(map[string]string{"token": token, "userId": insertedID})
     }
 }
 
