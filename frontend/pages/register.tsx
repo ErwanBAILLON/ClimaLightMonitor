@@ -31,9 +31,10 @@ const Register = () => {
 
       // Si l'inscription est réussie
       if (response.status === 201) {
-        setSuccess('Inscription réussie ! Redirection vers la page de connexion...');
+        localStorage.setItem("userId", response.data.userId); // Stocker l'ID utilisateur
+        setSuccess("Inscription réussie ! Redirection vers la page des appareils...");
         setTimeout(() => {
-          router.push('/login'); // Redirection vers la page de login
+          router.push("/devices");
         }, 2000);
       }
     } catch (err) {

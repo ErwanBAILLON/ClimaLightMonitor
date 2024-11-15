@@ -11,6 +11,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { subDays, parseISO, isAfter, isEqual, isBefore } from 'date-fns';
 import { FiRefreshCw } from 'react-icons/fi';
 import { FaTemperatureHigh, FaTint, FaLightbulb, FaExclamationTriangle, FaArrowUp, FaArrowDown, FaEquals } from 'react-icons/fa';
+import { useRouter } from 'next/router';
 
 type DataKeys = 'temperature' | 'humidity' | 'luminosity';
 
@@ -44,7 +45,7 @@ function Dashboard() {
     showAverages: false,
     showDonut: false,
   });
-
+  const router = useRouter();
   const [showToast, setShowToast] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [startDate, setStartDate] = useState<Date | undefined>(subDays(new Date(), 1));
@@ -77,8 +78,23 @@ function Dashboard() {
   };
 
   const fetchData = () => {
+    const userId = localStorage.getItem("userId"); // Stockez l'ID utilisateur lors de la connexion
+    const deviceId = router.query.deviceId; // Récupérer depuis les paramètres de l'URL (si nécessaire)
+  
+    if (!userId) {
+      console.error("Utilisateur non identifié !");
+      router.push("/login");
+      return;
+    }
+  
+    const queryParams = new URLSearchParams();
+    queryParams.append("userId", userId);
+    if (deviceId) {
+      queryParams.append("deviceId", deviceId as string);
+    }
+  
     axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/data`)
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/data?${queryParams.toString()}`)
       .then((response) => {
         const responseData = response.data;
         const latestData = responseData[responseData.length - 1];
@@ -90,7 +106,7 @@ function Dashboard() {
         }));
         updateData(latestData, chartData);
       })
-      .catch((error) => console.error('Erreur lors de la récupération des données:', error));
+      .catch((error) => console.error("Erreur lors de la récupération des données :", error));
   };
 
   useEffect(() => {
