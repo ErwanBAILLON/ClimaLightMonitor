@@ -1,20 +1,19 @@
 package utils
 
 import (
-	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 )
 
-var jwtKey = []byte(os.Getenv("JWT_KEY"))
+var jwtKey = []byte("votre_cle_secrete") // Remplacez par une clé secrète sécurisée
 
-func GenerateJWT(username string) (string, error) {
-    expirationTime := time.Now().Add(24 * time.Hour)
-    claims := &jwt.StandardClaims{
-        Subject:   username,
-        ExpiresAt: expirationTime.Unix(),
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString(jwtKey)
+func GenerateJWT(userId string) (string, error) {
+	claims := &jwt.StandardClaims{
+		Subject:   userId,
+		ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtKey)
 }
