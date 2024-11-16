@@ -93,19 +93,98 @@ function Dashboard() {
       queryParams.append("deviceId", deviceId as string);
     }
     axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/data?deviceId=${deviceId}`)
-      .then((response) => {
-        const responseData = response.data;
-        const latestData = responseData[responseData.length - 1];
-        const chartData = responseData.map((data: { temperature: number; humidity: number; luminosity: number; timestamp: string }) => ({
-          temperature: data.temperature,
-          humidity: data.humidity,
-          luminosity: data.luminosity,
-          timestamp: data.timestamp,
-        }));
-        updateData(latestData, chartData);
-      })
-      .catch((error) => console.error("Erreur lors de la récupération des données :", error));
+  .get(`${process.env.NEXT_PUBLIC_API_URL}/data?deviceId=${deviceId}`)
+  .then((response) => {
+    const responseData = response.data;
+
+    const formatNumber = (value: number): string => {
+      // Convertir en chaîne avec maximum 2 chiffres après la virgule
+      const formatted = value.toFixed(2);
+      
+      // Convertir en nombre pour supprimer les zéros inutiles
+      return parseFloat(formatted).toString();
+    };
+
+    // Fonction pour regrouper les données sur une période et calculer les moyennes
+    const groupAndAverageData = (data: typeof responseData, period: number) => {
+      if (data.length === 0) return [];
+
+      const groupedData: typeof responseData = [];
+      let currentGroup: typeof responseData = [];
+      let startTime = new Date(data[0].timestamp).getTime();
+
+      const pushGroupIfStable = () => {
+        if (currentGroup.length === 0) return;
+
+        // Vérifier si les valeurs sont stables
+        const first = currentGroup[0];
+        const hasSignificantChange = currentGroup.some(
+          (item: { temperature: number; humidity: number; luminosity: number }) =>
+            Math.abs(item.humidity - first.humidity) > 1 || // Par exemple, humidité doit changer > 1%
+            Math.abs(item.luminosity - first.luminosity) > 10 // Par exemple, luminosité doit changer > 10
+        );
+
+        if (hasSignificantChange) {
+          // Ajouter chaque point si changement
+          groupedData.push(...currentGroup);
+        } else {
+          // Sinon, calculer la moyenne
+          const avgTemperature =
+            currentGroup.reduce((sum: number, item: { temperature: number }) => sum + item.temperature, 0) /
+            currentGroup.length;
+          const avgHumidity =
+            currentGroup.reduce((sum: number, item: { humidity: number }) => sum + item.humidity, 0) /
+            currentGroup.length;
+          const avgLuminosity =
+            currentGroup.reduce((sum: number, item: { luminosity: number }) => sum + item.luminosity, 0) /
+            currentGroup.length;
+
+          groupedData.push({
+            temperature: Number(formatNumber(avgTemperature)),
+            humidity: Number(formatNumber(avgHumidity)),
+            luminosity: Number(formatNumber(avgLuminosity)),
+            timestamp: currentGroup[currentGroup.length - 1].timestamp, // Utilise le dernier timestamp
+          });
+        }
+      };
+
+      for (const item of data) {
+        const currentTime = new Date(item.timestamp).getTime();
+        if (currentTime - startTime < period * 1000) {
+          currentGroup.push(item);
+        } else {
+          // Fin de groupe, calculer la moyenne si possible
+          pushGroupIfStable();
+          currentGroup = [item];
+          startTime = currentTime;
+        }
+      }
+
+      // Ajouter le dernier groupe
+      pushGroupIfStable();
+
+      return groupedData;
+    };
+
+    // Regrouper les données sur une période de 10 secondes
+    const chartData = groupAndAverageData(
+      responseData.map((data: { temperature: number; humidity: number; luminosity: number; timestamp: string }) => ({
+        temperature: data.temperature,
+        humidity: data.humidity,
+        luminosity: data.luminosity,
+        timestamp: data.timestamp,
+      })),
+      10 // Regrouper sur une période de 10 secondes
+    );
+
+    // Récupérer les dernières données après regroupement
+    const latestData = chartData[chartData.length - 1];
+
+    // Mettre à jour les données
+    updateData(latestData, chartData);
+  })
+  .catch((error) => console.error("Erreur lors de la récupération des données :", error));
+
   };
 
   useEffect(() => {
