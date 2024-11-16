@@ -79,7 +79,7 @@ function Dashboard() {
 
   const fetchData = () => {
     const userId = localStorage.getItem("userId"); // Stockez l'ID utilisateur lors de la connexion
-    const deviceId = router.query.deviceId; // Récupérer depuis les paramètres de l'URL (si nécessaire)
+    const deviceId = localStorage.getItem("deviceId"); // Stockez l'ID de l'appareil lors de la connexion
   
     if (!userId) {
       console.error("Utilisateur non identifié !");
@@ -92,9 +92,8 @@ function Dashboard() {
     if (deviceId) {
       queryParams.append("deviceId", deviceId as string);
     }
-  
     axios
-      .get(`${process.env.NEXT_PUBLIC_API_URL}/data?${queryParams.toString()}`)
+      .get(`${process.env.NEXT_PUBLIC_API_URL}/data?deviceId=${deviceId}`)
       .then((response) => {
         const responseData = response.data;
         const latestData = responseData[responseData.length - 1];

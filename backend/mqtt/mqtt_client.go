@@ -3,109 +3,81 @@ package mqtt
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
-	"os"
 	"time"
+	"fmt"
+	"os"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var messagePubHandler MQTT.MessageHandler
-
-// Structure des données du capteur
+// Structure des données MQTT
 type SensorData struct {
-	DeviceID    string  `bson:"deviceId" json:"deviceId"`
-	Temperature float64 `bson:"temperature" json:"temperature"`
-	Humidity    float64 `bson:"humidity" json:"humidity"`
-	Luminosity  int     `bson:"luminosity" json:"luminosity"`
-	Timestamp   time.Time `bson:"timestamp" json:"timestamp"`
+	DeviceID    string  `json:"deviceId"`
+	Temperature float64 `json:"temperature"`
+	Humidity    float64 `json:"humidity"`
+	Luminosity  int     `json:"luminosity"`
+	Timestamp   string  `json:"timestamp"`
 }
 
-// Valider les données du capteur
-func validateSensorData(data SensorData) error {
-	if data.DeviceID == "" {
-		return fmt.Errorf("deviceId is missing")
-	}
-	if data.Temperature < -50 || data.Temperature > 100 {
-		return fmt.Errorf("temperature value is out of range")
-	}
-	if data.Humidity < 0 || data.Humidity > 100 {
-		return fmt.Errorf("humidity value is out of range")
-	}
-	if data.Luminosity < 0 {
-		return fmt.Errorf("luminosity value is negative")
-	}
-	return nil
-}
-
-// Vérifier si le deviceId est enregistré pour un utilisateur
-func isDeviceRegistered(mongoClient *mongo.Client, deviceId string) (bool, error) {
-	collection := mongoClient.Database(os.Getenv("MONGO_DB")).Collection("devices")
-	var device bson.M
-	err := collection.FindOne(context.TODO(), bson.M{"deviceId": deviceId}).Decode(&device)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-// Gérer les messages MQTT reçus
+// Fonction pour gérer les messages MQTT
 func handleMQTTMessage(client MQTT.Client, msg MQTT.Message, mongoClient *mongo.Client) {
-    fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
+	// Décodage du message MQTT
+	var sensorData SensorData
+	err := json.Unmarshal(msg.Payload(), &sensorData)
+	if err != nil {
+		log.Printf("Failed to unmarshal MQTT message payload: %v", err)
+		return
+	}
 
-    // Décoder le message JSON
-    var sensorData SensorData
-    err := json.Unmarshal(msg.Payload(), &sensorData)
-    if err != nil {
-        log.Printf("Failed to unmarshal MQTT message payload: %v", err)
-        return
-    }
+	// Vérifier si l'appareil est enregistré dans la collection "devices"
+	devicesCollection := mongoClient.Database("iot_db").Collection("devices")
+	var device bson.M
+	err = devicesCollection.FindOne(context.TODO(), bson.M{"deviceId": sensorData.DeviceID}).Decode(&device)
+	if err == mongo.ErrNoDocuments {
+		// Si l'appareil n'est pas enregistré, l'ajouter à la collection "devices"
+		log.Printf("Device not registered: %s. Registering automatically.", sensorData.DeviceID)
+		newDevice := bson.M{
+			"deviceId":  sensorData.DeviceID,
+			"registered": false,
+			"createdAt": time.Now(),
+		}
+		_, err := devicesCollection.InsertOne(context.TODO(), newDevice)
+		if err != nil {
+			log.Printf("Failed to register device: %v", err)
+			return
+		}
+	} else if err != nil {
+		// Gestion des erreurs lors de la recherche dans la collection "devices"
+		log.Printf("Error checking device registration: %v", err)
+		return
+	}
 
-    // Vérifier si l'appareil est enregistré
-    devicesCollection := mongoClient.Database("iot_db").Collection("devices")
-    var device bson.M
-    err = devicesCollection.FindOne(context.TODO(), bson.M{"deviceId": sensorData.DeviceID}).Decode(&device)
-    if err == mongo.ErrNoDocuments {
-        // Enregistrer automatiquement un nouvel appareil
-        log.Printf("Unregistered device: %s. Registering it automatically.", sensorData.DeviceID)
-        newDevice := bson.M{
-            "deviceId":  sensorData.DeviceID,
-            "registered": false, // Marqueur pour une association ultérieure avec un utilisateur
-            "createdAt": time.Now(),
-        }
+	// Ajouter un timestamp si non présent dans les données
+	if sensorData.Timestamp == "" {
+		sensorData.Timestamp = time.Now().Format(time.RFC3339)
+	}
 
-        _, err = devicesCollection.InsertOne(context.TODO(), newDevice)
-        if err != nil {
-            log.Printf("Failed to register new device: %v", err)
-            return
-        }
+	// Insérer les données dans la collection "sensor_data"
+	sensorDataCollection := mongoClient.Database("iot_db").Collection("sensor_data")
+	_, err = sensorDataCollection.InsertOne(context.TODO(), bson.M{
+		"deviceId":    sensorData.DeviceID,
+		"temperature": sensorData.Temperature,
+		"humidity":    sensorData.Humidity,
+		"luminosity":  sensorData.Luminosity,
+		"timestamp":   sensorData.Timestamp,
+	})
+	if err != nil {
+		log.Printf("Failed to insert sensor data: %v", err)
+		return
+	}
 
-        log.Printf("Device %s registered successfully", sensorData.DeviceID)
-    } else if err != nil {
-        log.Printf("Failed to query devices: %v", err)
-        return
-    }
-
-    // Ajouter un timestamp si absent
-    if sensorData.Timestamp.IsZero() {
-        sensorData.Timestamp = time.Now()
-    }
-
-    // Insérer les données dans MongoDB
-    sensorCollection := mongoClient.Database("iot_db").Collection("sensor_data")
-    _, err = sensorCollection.InsertOne(context.TODO(), sensorData)
-    if err != nil {
-        log.Printf("Failed to insert MQTT message into MongoDB: %v", err)
-    }
+	log.Printf("Successfully inserted data for device %s", sensorData.DeviceID)
 }
 
-
+var messagePubHandler MQTT.MessageHandler
 
 func InitMQTT(mongoClient *mongo.Client) {
 	messagePubHandler = func(client MQTT.Client, msg MQTT.Message) {

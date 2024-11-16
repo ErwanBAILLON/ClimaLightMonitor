@@ -31,6 +31,8 @@ const Login = () => {
       // Si l'authentification est réussie, rediriger vers le dashboard
       if (response.status === 200) {
         localStorage.setItem('token', response.data.token); // Stockage du token
+        localStorage.setItem('userId', response.data.userId); // Stockage de l'ID utilisateur
+        localStorage.setItem('deviceId', response.data.devices[0].deviceId); // Stockage de l'ID de l'appareil
         router.push('/dashboard'); // Redirection vers le dashboard
       }
     } catch (err) {

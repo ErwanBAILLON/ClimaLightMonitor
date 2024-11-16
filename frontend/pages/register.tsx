@@ -32,6 +32,7 @@ const Register = () => {
       // Si l'inscription est réussie
       if (response.status === 201) {
         localStorage.setItem("userId", response.data.userId); // Stocker l'ID utilisateur
+        localStorage.setItem("token", response.data.token); // Stocker le token JWT
         setSuccess("Inscription réussie ! Redirection vers la page des appareils...");
         setTimeout(() => {
           router.push("/devices");

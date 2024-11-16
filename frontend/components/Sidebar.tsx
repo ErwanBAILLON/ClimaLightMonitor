@@ -14,6 +14,8 @@ const Sidebar = ({ data }: any) => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('deviceId');
     router.push('/login');
   };
 
@@ -80,6 +82,12 @@ const Sidebar = ({ data }: any) => {
             >
               <FaFileCsv className="mr-3" /> Exporter en CSV
             </button>
+
+            <Link href="/devices">
+              <a className="flex items-center px-4 py-2 hover:bg-blue-700">
+                <FaChartLine className="mr-3" /> Appareils
+              </a>
+            </Link>
           </nav>
         </div>
 

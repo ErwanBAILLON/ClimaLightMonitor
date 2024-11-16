@@ -28,10 +28,16 @@ func GetData(client *mongo.Client) http.HandlerFunc {
 			filter["deviceId"] = deviceId
 		}
 
+		// Si aucun filtre n'est défini, retourner une erreur
+		if len(filter) == 0 {
+			http.Error(w, "Missing userId or deviceId parameter", http.StatusBadRequest)
+			return
+		}
+
 		// Exécuter la requête avec le filtre
 		cursor, err := collection.Find(context.TODO(), filter)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to query data: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer cursor.Close(context.TODO())
@@ -39,7 +45,13 @@ func GetData(client *mongo.Client) http.HandlerFunc {
 		// Lire les résultats dans un tableau
 		var data []bson.M
 		if err := cursor.All(context.TODO(), &data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to process data: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Si aucun résultat n'est trouvé, retourner un message clair
+		if len(data) == 0 {
+			http.Error(w, "No data found for the given filter", http.StatusNotFound)
 			return
 		}
 
@@ -48,3 +60,4 @@ func GetData(client *mongo.Client) http.HandlerFunc {
 		json.NewEncoder(w).Encode(data)
 	}
 }
+
